@@ -1,0 +1,116 @@
+/* ONLINE RETAIL STORE DATABASE */
+
+
+-- DATABASE DESIGN
+
+-- Table: Customers
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY AUTO_INCREMENT,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Email VARCHAR(100) UNIQUE,
+    PhoneNumber VARCHAR(15),
+    Address TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table: Products
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY AUTO_INCREMENT,
+    ProductName VARCHAR(100),
+    Category VARCHAR(50),
+    Price DECIMAL(10, 2),
+    Stock INT,
+    Description TEXT
+);
+
+-- Table: Orders
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY AUTO_INCREMENT,
+    CustomerID INT,
+    OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    TotalAmount DECIMAL(10, 2),
+    Status VARCHAR(20) DEFAULT 'Pending',
+    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
+);
+
+-- Table: OrderDetails (for handling multiple products in an order)
+CREATE TABLE OrderDetails (
+    OrderDetailID INT PRIMARY KEY AUTO_INCREMENT,
+    OrderID INT,
+    ProductID INT,
+    Quantity INT,
+    Price DECIMAL(10, 2),
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+);
+
+-- Table: Payments
+CREATE TABLE Payments (
+    PaymentID INT PRIMARY KEY AUTO_INCREMENT,
+    OrderID INT,
+    PaymentDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PaymentMethod VARCHAR(20),
+    Amount DECIMAL(10, 2),
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+);
+
+-- SAMPLE SQL QUERIES
+
+-- 1. Insert a new customer
+INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address) 
+VALUES ('John', 'Doe', 'john.doe@example.com', '1234567890', '123 Main St, Springfield');
+
+-- 2. Add a new product
+INSERT INTO Products (ProductName, Category, Price, Stock, Description) 
+VALUES ('Wireless Mouse', 'Electronics', 29.99, 100, 'Ergonomic wireless mouse');
+
+-- 3. Place a new order
+START TRANSACTION;
+
+INSERT INTO Orders (CustomerID, TotalAmount) 
+VALUES (1, 59.98);
+
+SET @OrderID = LAST_INSERT_ID();
+
+INSERT INTO OrderDetails (OrderID, ProductID, Quantity, Price) 
+VALUES (@OrderID, 1, 2, 29.99);
+
+UPDATE Products 
+SET Stock = Stock - 2 
+WHERE ProductID = 1;
+
+COMMIT;
+
+-- 4. Record a payment for an order
+INSERT INTO Payments (OrderID, PaymentMethod, Amount) 
+VALUES (1, 'Credit Card', 59.98);
+
+-- 5. Retrieve customer order details
+SELECT 
+    o.OrderID, o.OrderDate, c.FirstName, c.LastName, p.ProductName, od.Quantity, od.Price 
+FROM 
+    Orders o
+JOIN 
+    Customers c ON o.CustomerID = c.CustomerID
+JOIN 
+    OrderDetails od ON o.OrderID = od.OrderID
+JOIN 
+    Products p ON od.ProductID = p.ProductID
+WHERE 
+    o.OrderID = 1;
+
+-- 6. Check product stock
+SELECT ProductName, Stock 
+FROM Products 
+WHERE ProductID = 1;
+
+-- 7. Get total sales by product
+SELECT 
+    p.ProductName, SUM(od.Quantity * od.Price) AS TotalSales 
+FROM 
+    OrderDetails od
+JOIN 
+    Products p ON od.ProductID = p.ProductID
+GROUP BY 
+    p.ProductID;
